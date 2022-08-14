@@ -18,8 +18,8 @@ class Metacall < Formula
     args = std_cmake_args + %W[
       -Wno-dev
       -DCMAKE_BUILD_TYPE=Release
-      -DOPTION_BUILD_SECURITY=OFF
-      -DOPTION_FORK_SAFE=ON
+      -DOPTION_BUILD_SECURITY=ON
+      -DOPTION_FORK_SAFE=OFF
       -DOPTION_BUILD_SCRIPTS=OFF
       -DOPTION_BUILD_TESTS=OFF
       -DOPTION_BUILD_EXAMPLES=OFF
