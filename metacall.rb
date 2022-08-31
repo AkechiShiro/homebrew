@@ -1,8 +1,8 @@
 class Metacall < Formula
   desc "Ultimate polyglot programming experience"
   homepage "https://metacall.io"
-  url "https://github.com/metacall/core/archive/refs/tags/v0.5.27.tar.gz"
-  sha256 "1493afadac893b7b3674ea44dd7caa7fd74989880658ae23003b30d3721bb92d"
+  url "https://github.com/metacall/core/archive/refs/tags/v0.5.29.tar.gz"
+  sha256 "6d2252f8d03ddfb8133544027ede7e81db31288e889ac7696d491667553f7464"
   license "Apache-2.0"
   head "https://github.com/metacall/core.git", branch: "develop"
 
@@ -13,19 +13,14 @@ class Metacall < Formula
   uses_from_macos "ruby"
 
   def install
-    Dir.mkdir("build")
-    Dir.chdir("build")
-    args = std_cmake_args + %W[
-      -Wno-dev
-      -DCMAKE_BUILD_TYPE=Release
-      -DOPTION_BUILD_SECURITY=ON
-      -DOPTION_FORK_SAFE=OFF
+    cmake_args = std_cmake_args + %W[
       -DOPTION_BUILD_SCRIPTS=OFF
+      -DOPTION_FORK_SAFE=OFF
       -DOPTION_BUILD_TESTS=OFF
       -DOPTION_BUILD_EXAMPLES=OFF
       -DOPTION_BUILD_LOADERS_PY=ON
       -DOPTION_BUILD_LOADERS_NODE=ON
-      -DNodeJS_INSTALL_PREFIX=/usr/local/Cellar/metacall/#{version}
+      -DNodeJS_INSTALL_PREFIX=#{buildpath}
       -DOPTION_BUILD_LOADERS_JAVA=ON
       -DOPTION_BUILD_LOADERS_JS=OFF
       -DOPTION_BUILD_LOADERS_C=OFF
@@ -38,18 +33,20 @@ class Metacall < Formula
       -DOPTION_BUILD_PORTS_PY=ON
       -DOPTION_BUILD_PORTS_NODE=ON
     ]
-    system "cmake", *args, ".."
-    system "cmake", "--build", ".", "--target", "install"
+    system "cmake", "-S", ".", "-B", "build", *cmake_args
+    system "cmake", "--build", "build"
+    system "cmake", "--install", "build"
 
     shebang = "\#!/usr/bin/env bash\n"
     # debug = "set -euxo pipefail\n"
 
     metacall_extra = [
-      "LOC=/usr/local/Cellar/metacall/#{version}\n",
-      "export LOADER_LIBRARY=\"$LOC/lib\"\n",
-      "export SERIAL_LIBRARY_PATH=\"$LOC/lib\"\n",
-      "export DETOUR_LIBRARY_PATH=\"$LOC/lib\"\n",
-      "export PORT_LIBRARY_PATH=\"$LOC/lib\"\n",
+      "LOC=#{prefix}\n",
+      "LIB=#{lib}\n",
+      "export LOADER_LIBRARY_PATH=\"$LIB\"\n",
+      "export SERIAL_LIBRARY_PATH=\"$LIB\"\n",
+      "export DETOUR_LIBRARY_PATH=\"$LIB\"\n",
+      "export PORT_LIBRARY_PATH=\"$LIB\"\n",
       "export CONFIGURATION_PATH=\"$LOC/configurations/global.json\"\n",
     ]
     cmds = [shebang, *metacall_extra]
@@ -97,10 +94,31 @@ class Metacall < Formula
       System.out.println("Hello from Java!");System.out.println("Hello from Java!");}}
     EOS
     # Tests
-    assert_match "Hello from Python", shell_output("#{bin}/metacall test.py")
-    assert_match "Hello from Ruby", shell_output("#{bin}/metacall test.rb")
-    assert_match "Script (test.java) loaded correctly\n", shell_output("#{bin}/metacall test.java")
-    assert_match "Hello from NodeJS", shell_output("#{bin}/metacall test.js")
-    assert_match "9.0", shell_output(testpath/"testTypescript.sh")
+    output_py = pipe_output("#{bin}/metacall test.py")
+
+    assert_match "Hello from Python", output_py 
+    refute_match(/error/, output_py)
+    puts(output_py)
+    
+    output_rb = pipe_output("#{bin}/metacall test.rb")
+
+    assert_match "Hello from Ruby", pipe_output("#{bin}/metacall test.rb")
+    refute_match(/error/, output_rb)
+
+    output_java = pipe_output("#{bin}/metacall test.java")
+
+    refute_match(/error/, output_java)
+    assert_match "Script (test.java) loaded correctly\n", output_java
+
+    output_js = pipe_output("#{bin}/metacall test.js")
+
+    refute_match(/error/, output_js)
+    assert_match "Hello from NodeJS", output_js
+
+    output_ts = pipe_output(testpath/"testTypescript.sh")
+
+    refute_match(/error/, output_ts)
+    assert_match "9.0", output_ts
+
   end
 end
